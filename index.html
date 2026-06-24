@@ -135,6 +135,25 @@
   .dash-error code{background:#fff;padding:1px 5px;border-radius:5px;font-size:12px;}
   .sheet[data-loading="true"]{opacity:.35;pointer-events:none;}
   .updated{font-size:11px;color:var(--faint);font-weight:600;}
+
+  /* 탭 + 소재별 성과 */
+  .tabnav{max-width:1080px;margin:0 auto 14px;display:flex;gap:8px;}
+  .tabnav .tab{font-family:"Pretendard";font-size:14px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 18px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;}
+  .tabnav .tab:hover{color:var(--blue);}
+  .tabnav .tab.active{color:#fff;background:var(--hero);border-color:var(--hero);}
+  .cr-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);}
+  .cr-table{border-collapse:collapse;width:100%;font-size:12.5px;white-space:nowrap;}
+  .cr-table th,.cr-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);}
+  .cr-table th{background:#F6F8FB;color:var(--muted);font-weight:700;font-size:11.5px;position:sticky;top:0;z-index:1;}
+  .cr-table th.cr-name,.cr-table td.cr-name{text-align:left;}
+  .cr-table td{font-family:var(--num);}
+  .cr-camp{cursor:pointer;background:#fff;font-weight:700;}
+  .cr-camp:hover{background:#F6F9FF;}
+  .cr-camp .cr-toggle{display:inline-block;width:14px;color:var(--blue);}
+  .cr-prod td{color:var(--ink-2);background:#FCFDFE;}
+  .cr-prod td.cr-name{padding-left:30px;font-family:"Pretendard";color:var(--muted);font-weight:600;}
+  .cr-camp td.cr-name{font-family:"Pretendard";}
+  .cr-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px;}
 </style>
 
 </head>
@@ -143,6 +162,11 @@
   <div class="dash-state">
     <div id="dash-loading" class="dash-loading"><span class="dot"></span> 데이터를 불러오는 중…</div>
     <div id="dash-error" class="dash-error" style="display:none"></div>
+  </div>
+
+  <div class="tabnav">
+    <button type="button" id="tab-summary" class="tab active">캠페인 성과 요약</button>
+    <button type="button" id="tab-creatives" class="tab">소재별 성과</button>
   </div>
 
   <main class="sheet" id="sheet" data-loading="true">
@@ -348,6 +372,29 @@
 
   </main>
 
+  <main class="sheet" id="panel-creatives" style="display:none">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">광고 성과 리포트</p>
+        <h1>소재별 성과</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="period">
+          <div class="range"><span id="cr-range">—</span></div>
+          <div class="days">캠페인 → 소재</div>
+        </div>
+      </div>
+    </header>
+    <section class="section">
+      <div class="sec-head">
+        <span class="no">▦</span>
+        <h2>캠페인별 소재 성과</h2>
+        <span class="hint">캠페인 행을 누르면 소재가 펼쳐집니다</span>
+      </div>
+      <div id="creatives-body"></div>
+    </section>
+  </main>
+
 <script>
 // ---------------------------------------------------------------------------
 // 설정: Apps Script 웹앱 URL (.../exec) 을 csvUrl 에 넣습니다.
@@ -471,6 +518,7 @@ window.DASHBOARD_CONFIG = {
     var start = map["period_start"], end = map["period_end"];
     var days = daysBetween(start, end);
     setText("period-range", fmtDate(start) + " – " + fmtDate(end).slice(5));
+    setText("cr-range", fmtDate(start) + " – " + fmtDate(end).slice(5));
     setText("period-days", "집행 기간 " + (isFinite(days) ? days + "일" : "—"));
 
     animate("roas-total", roasTotalPct);
@@ -539,6 +587,63 @@ window.DASHBOARD_CONFIG = {
     setText(prefix + "-attrib-daily", fmt(daily));
   }
 
+  function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+
+  function renderCreatives(list){
+    var host = $("creatives-body");
+    if(!host) return;
+    if(!list || !list.length){ host.innerHTML = '<div class="cr-empty">소재 데이터가 없습니다. 기간을 선택해 다시 시도해보세요.</div>'; return; }
+    var cols = [
+      ["result","결과","n"],["spend","광고비","won"],["impressions","노출","n"],
+      ["page_views","페이지조회","n"],["view_rate","조회율","p0"],
+      ["new_conv","신규전환","n"],["new_conv_rate","신규전환율","p2"],["cpa","전환당비용","won"],
+      ["attributed","기인증자","n"],["purchases","총구매","n"],["cpp","구매당비용","won"],
+      ["purchase_rate","구매전환율","p2"],["revenue","거래액","won"],["roas","ROAS","roas"],["shares","공유","n"]
+    ];
+    function cell(v,t){
+      if(t==="won") return fmt(v);
+      if(t==="p0") return pct(v,0);
+      if(t==="p2") return pct(v,2);
+      if(t==="roas") return isFinite(v) ? Math.round(v*100).toLocaleString("en-US")+"%" : "—";
+      return fmt(v);
+    }
+    var html = '<div class="cr-scroll"><table class="cr-table"><thead><tr><th class="cr-name">캠페인 / 소재</th>';
+    cols.forEach(function(c2){ html += "<th>"+c2[1]+"</th>"; });
+    html += "</tr></thead><tbody>";
+    list.forEach(function(camp,gi){
+      var m = camp.metrics;
+      html += '<tr class="cr-camp" data-grp="'+gi+'"><td class="cr-name"><span class="cr-toggle">▾</span> '+esc(camp.label)+'</td>';
+      cols.forEach(function(c2){ html += "<td>"+cell(m[c2[0]],c2[2])+"</td>"; });
+      html += "</tr>";
+      (camp.children||[]).forEach(function(ch){
+        var cm = ch.metrics;
+        html += '<tr class="cr-prod cr-grp-'+gi+'"><td class="cr-name">'+esc(ch.name)+'</td>';
+        cols.forEach(function(c2){ html += "<td>"+cell(cm[c2[0]],c2[2])+"</td>"; });
+        html += "</tr>";
+      });
+    });
+    html += "</tbody></table></div>";
+    host.innerHTML = html;
+    Array.prototype.forEach.call(host.querySelectorAll(".cr-camp"), function(row){
+      row.addEventListener("click", function(){
+        var g = row.getAttribute("data-grp");
+        var closed = row.classList.toggle("collapsed");
+        var t = row.querySelector(".cr-toggle"); if(t) t.textContent = closed ? "▸" : "▾";
+        Array.prototype.forEach.call(host.querySelectorAll(".cr-grp-"+g), function(pr){ pr.style.display = closed ? "none" : ""; });
+      });
+    });
+  }
+
+  function showTab(name){
+    var creatives = (name === "creatives");
+    var s = $("sheet"), p = $("panel-creatives");
+    if(s) s.style.display = creatives ? "none" : "";
+    if(p) p.style.display = creatives ? "" : "none";
+    var b1 = $("tab-summary"), b2 = $("tab-creatives");
+    if(b1) b1.classList.toggle("active", !creatives);
+    if(b2) b2.classList.toggle("active", creatives);
+  }
+
   function parseData_(text) {
     var t = (text || "").trim();
     if (t.charAt(0) === "{" || t.charAt(0) === "[") {
@@ -604,6 +709,7 @@ window.DASHBOARD_CONFIG = {
           var e = $("dash-error"); if (e) e.style.display = "none";
         }
         render(map);
+        if (map.creatives) renderCreatives(map.creatives);
         var l = $("dash-loading"); if (l) l.style.display = "none";
         var s = $("sheet"); if (s) s.setAttribute("data-loading", "false");
         setBusy(false);
@@ -627,6 +733,9 @@ window.DASHBOARD_CONFIG = {
   if (refreshBtn) refreshBtn.addEventListener("click", load);
   var applyBtn = $("apply-btn");
   if (applyBtn) applyBtn.addEventListener("click", load);
+  var tS = $("tab-summary"), tC = $("tab-creatives");
+  if (tS) tS.addEventListener("click", function(){ showTab("summary"); });
+  if (tC) tC.addEventListener("click", function(){ showTab("creatives"); });
 
   initDates();
   load();  // 페이지 열 때 기본 기간(6/19~오늘)으로 1회 실시간 로드
