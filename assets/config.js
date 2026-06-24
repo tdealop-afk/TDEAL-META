@@ -5,7 +5,7 @@
 //  웹앱을 배포한 뒤 나오는 .../exec 주소로 아래 값을 교체하면 실시간이 됩니다.
 // ---------------------------------------------------------------------------
 window.DASHBOARD_CONFIG = {
-  csvUrl: "https://script.google.com/macros/s/AKfycbzozIkrlLNALf0HCF5JNLzJhUs9B3G_KfSYQusp3Fopqvqb0cM5Um2rhwyE1Ny0iSN71Q/exec",
+  csvUrl: "https://script.google.com/macros/s/AKfycbyh9dZCNKX147ivCcmQS2Z340EJCFbeHp9ZPl3oNZ-gVOK5oZvQ7j_j3ZMWCkXFPOXbnA/exec",
 
   // 자동 새로고침 간격(밀리초). 실시간 화면이라 1분마다 갱신.
   refreshMs: 60000
