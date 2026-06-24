@@ -33,10 +33,18 @@
   .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:30px 38px 26px;flex-wrap:wrap;}
   .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--blue);margin:0 0 8px;}
   .topbar h1{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:0;}
-  .topbar-right{display:flex;align-items:center;gap:14px;}
+  .topbar-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
   .period{text-align:right;}
   .period .range{font-family:var(--num);font-weight:600;font-size:18px;letter-spacing:.01em;color:var(--ink);}
   .period .days{font-size:12.5px;color:var(--muted);margin-top:2px;font-weight:600;}
+
+  .datefilter{display:flex;align-items:center;gap:7px;}
+  .datefilter .dinput{font-family:var(--num);font-size:13px;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--surface);cursor:pointer;}
+  .datefilter .dinput:focus{outline:none;border-color:var(--blue-2);}
+  .datefilter .dsep{color:var(--faint);font-weight:600;}
+  .apply-btn{font-family:"Pretendard";font-size:13px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:9px;padding:8px 14px;cursor:pointer;transition:opacity .15s ease;}
+  .apply-btn:hover{opacity:.9;}
+  .apply-btn:disabled{opacity:.5;cursor:default;}
 
   .refresh-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;transition:background .15s ease,color .15s ease,border-color .15s ease;}
   .refresh-btn:hover{background:#F6F9FF;color:var(--blue);border-color:var(--blue-2);}
@@ -148,6 +156,12 @@
         <div class="period">
           <div class="range"><span id="period-range">—</span></div>
           <div class="days"><span id="period-days">집행 기간</span></div>
+        </div>
+        <div class="datefilter">
+          <input type="date" id="date-since" class="dinput" aria-label="시작일" />
+          <span class="dsep">~</span>
+          <input type="date" id="date-until" class="dinput" aria-label="종료일" />
+          <button type="button" id="apply-btn" class="apply-btn">적용</button>
         </div>
         <button type="button" id="refresh-btn" class="refresh-btn" title="새로고침" aria-label="새로고침">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
@@ -336,24 +350,21 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// 설정: 데이터 주소를 csvUrl 에 넣으세요. 두 가지 중 하나입니다.
-//  (A) 실시간 — Apps Script 웹앱 URL (.../exec) : 지연 없음, 권장
-//  (B) 게시 CSV URL : 약 5분 캐시
-//  웹앱을 배포한 뒤 나오는 .../exec 주소로 아래 값을 교체하면 실시간이 됩니다.
+// 설정: Apps Script 웹앱 URL (.../exec) 을 csvUrl 에 넣습니다.
+//  - 날짜를 선택해 '적용'을 누르면 ?since=...&until=... 으로 호출되어
+//    그 기간으로 메타에서 새로 받아와 집계 시트를 갱신한 뒤 결과를 보여줍니다(약 1분).
+//  - defaultSince: 페이지 열 때 시작일 기본값. 종료일 기본값은 '오늘'.
 // ---------------------------------------------------------------------------
 window.DASHBOARD_CONFIG = {
-  csvUrl: "https://script.google.com/macros/s/AKfycbxcDf7xe_ABmSLfTmEmwtqKmMWz5dMcGXG9BzmgzmXDhrv8elInz3g2JVLj4QzyKvhucw/exec"
-
-  // 자동 새로고침은 끔. 상단 우측 새로고침 버튼을 눌러야 갱신됩니다.
+  csvUrl: "https://script.google.com/macros/s/AKfycbxcDf7xe_ABmSLfTmEmwtqKmMWz5dMcGXG9BzmgzmXDhrv8elInz3g2JVLj4QzyKvhucw/exec",
+  defaultSince: "2026-06-19"
 };
 
 </script>
 <script>
 /* ===========================================================================
-   광고 성과 리포트 — 데이터 로더 / 렌더러
-   구글 시트(site_data 탭, CSV 게시)에서 원본 수치를 읽어와
-   파생 지표(ROAS, 총비용, 인당 비용 등)를 계산하고 화면에 채웁니다.
-   원본 입력만 시트에서 관리하면 되고, 계산/표시는 모두 여기서 처리합니다.
+   광고 성과 리포트 — 데이터 로더 / 렌더러 (날짜 필터판)
+   날짜를 골라 '적용'하면 그 기간으로 메타→집계 갱신 후 표시.
    =========================================================================== */
 (function () {
   "use strict";
@@ -361,7 +372,6 @@ window.DASHBOARD_CONFIG = {
   var CFG = window.DASHBOARD_CONFIG || {};
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---- 작은 CSV 파서 (따옴표 처리 포함) ---- */
   function parseCSV(text) {
     var rows = [], row = [], field = "", i = 0, inQ = false, c;
     text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -382,19 +392,17 @@ window.DASHBOARD_CONFIG = {
     return rows;
   }
 
-  /* ---- key,value 형태의 CSV를 객체로 ---- */
   function toMap(rows) {
     var m = {};
     rows.forEach(function (r) {
       if (!r.length) return;
       var k = (r[0] || "").trim();
-      if (!k || k.toLowerCase() === "key") return; // 헤더행 건너뜀
+      if (!k || k.toLowerCase() === "key") return;
       m[k] = (r[1] != null ? String(r[1]).trim() : "");
     });
     return m;
   }
 
-  /* ---- 헬퍼 ---- */
   function num(v) {
     if (v == null) return NaN;
     var n = parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
@@ -424,7 +432,7 @@ window.DASHBOARD_CONFIG = {
   function daysBetween(a, b) {
     var d1 = new Date(a), d2 = new Date(b);
     if (isNaN(d1) || isNaN(d2)) return NaN;
-    return Math.round((d2 - d1) / 86400000) + 1; // 양끝 포함
+    return Math.round((d2 - d1) / 86400000) + 1;
   }
   function fmtDate(s) {
     var d = new Date(s);
@@ -432,8 +440,12 @@ window.DASHBOARD_CONFIG = {
     var p = function (x) { return (x < 10 ? "0" : "") + x; };
     return d.getFullYear() + "." + p(d.getMonth() + 1) + "." + p(d.getDate());
   }
+  function todayStr() {
+    var d = new Date();
+    var p = function (x) { return (x < 10 ? "0" : "") + x; };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
 
-  /* ---- 렌더 ---- */
   function render(map) {
     var g = function (k) { return num(map[k]); };
 
@@ -449,7 +461,6 @@ window.DASHBOARD_CONFIG = {
     var resultsTotal = g("results_total");
     var pph = g("point_per_head");
 
-    // 시트에 값이 있으면 그대로, 없으면 계산
     var has = function (k) { return map[k] != null && map[k] !== "" && isFinite(num(map[k])); };
     var totalCost = has("total_cost") ? g("total_cost") : (adSpend + pointsPaid);
     var roasTotalPct = has("roas_total") ? g("roas_total") : (revenue / totalCost) * 100;
@@ -457,13 +468,11 @@ window.DASHBOARD_CONFIG = {
     var cpaTotal = has("cpa_total") ? g("cpa_total") : (totalCost / newConv);
     var pointsHead = has("signups_total") ? g("signups_total") : (pph ? Math.round(pointsPaid / pph) : NaN);
 
-    // 기간 (상단 = 보고 종료일 기준)
     var start = map["period_start"], end = map["period_end"];
     var days = daysBetween(start, end);
-    setText("period-range", fmtDate(start) + " – " + fmtDate(end).slice(5)); // 끝은 MM.DD
+    setText("period-range", fmtDate(start) + " – " + fmtDate(end).slice(5));
     setText("period-days", "집행 기간 " + (isFinite(days) ? days + "일" : "—"));
 
-    // 히어로
     animate("roas-total", roasTotalPct);
     setText("roas-ad", fmt(roasAdPct));
     animate("total-cost", totalCost);
@@ -474,7 +483,6 @@ window.DASHBOARD_CONFIG = {
     setWidth("bar-ad", (adSpend / revenue) * 100);
     setWidth("bar-pt", (pointsPaid / revenue) * 100);
 
-    // 비용 구성
     animate("ad-spend", adSpend);
     animate("points-paid", pointsPaid);
     setText("point-per-head", fmt(pph));
@@ -483,7 +491,6 @@ window.DASHBOARD_CONFIG = {
     animate("total-cost-2", totalCost);
     animate("cpa-total", cpaTotal);
 
-    // 핵심 지표
     animate("impressions", impressions);
     animate("page-views", pageViews);
     setText("view-rate", pct(pageViews / impressions, 0));
@@ -499,7 +506,6 @@ window.DASHBOARD_CONFIG = {
     animate("shares", shares);
     setText("results-total", fmt(resultsTotal));
 
-    // 집행 전후 (선택) — 값이 있을 때만 표시
     var suBefore = g("signups_before"), suAfter = g("signups_after");
     var buBefore = g("buyers_before"), buAfter = g("buyers_after");
     if (isFinite(suBefore) || isFinite(buBefore)) {
@@ -508,7 +514,6 @@ window.DASHBOARD_CONFIG = {
       renderBA("bu", buBefore, buAfter, g("buyers_attrib_total"), g("buyers_attrib_daily"), days);
     }
 
-    // 각주
     setText("foot-line1",
       "ROAS는 거래액 ÷ 총비용(광고비+포인트 지급) 기준 " + fmt(roasTotalPct) +
       "%입니다. 광고비만 기준으로는 " + fmt(roasAdPct) + "%입니다.");
@@ -529,13 +534,11 @@ window.DASHBOARD_CONFIG = {
     setWidth(prefix + "-bar-before", (before / max) * 100);
     setWidth(prefix + "-bar-after", (after / max) * 100);
     if (isFinite(attribTotal)) setText(prefix + "-attrib-total", fmt(attribTotal));
-    // 일평균: 명시값(signups_attrib_daily 등)이 있으면 그대로, 없으면 총원/일수로 계산
     var daily = isFinite(attribDaily) ? attribDaily
       : (isFinite(attribTotal) && isFinite(days) && days ? attribTotal / days : NaN);
     setText(prefix + "-attrib-daily", fmt(daily));
   }
 
-  /* ---- 응답이 JSON(웹앱) 이든 CSV(게시) 이든 모두 처리 ---- */
   function parseData_(text) {
     var t = (text || "").trim();
     if (t.charAt(0) === "{" || t.charAt(0) === "[") {
@@ -551,55 +554,82 @@ window.DASHBOARD_CONFIG = {
           Object.keys(j).forEach(function (k) { m2[k.trim()] = j[k]; });
           return m2;
         }
-      } catch (e) { /* JSON 아니면 CSV로 */ }
+      } catch (e) { /* CSV로 */ }
     }
     return toMap(parseCSV(text));
   }
 
-  /* ---- 로드 ---- */
+  function showLoading(msg) {
+    var l = $("dash-loading");
+    if (l) { l.style.display = ""; l.innerHTML = '<span class="dot"></span> ' + msg; }
+  }
   function showError(msg) {
     var e = $("dash-error");
     if (e) { e.style.display = ""; e.innerHTML = msg; }
     var l = $("dash-loading"); if (l) l.style.display = "none";
   }
 
-  function setRefreshing(on) {
+  function setBusy(on) {
     var btn = $("refresh-btn");
-    if (!btn) return;
-    btn.disabled = on;
-    btn.classList.toggle("spinning", on);
+    if (btn) { btn.disabled = on; btn.classList.toggle("spinning", on); }
+    var ap = $("apply-btn");
+    if (ap) { ap.disabled = on; ap.textContent = on ? "불러오는 중…" : "적용"; }
   }
 
+  /* 날짜 입력칸 값으로 메타 갱신 + 표시 */
   function load() {
     if (!CFG.csvUrl || CFG.csvUrl.indexOf("PASTE_") === 0) {
-      showError("⚠️ <code>assets/config.js</code> 의 <code>csvUrl</code> 에 구글 시트 게시 CSV 주소를 넣어주세요.");
+      showError("⚠️ <code>csvUrl</code> 에 Apps Script 웹앱(.../exec) 주소를 넣어주세요.");
       return;
     }
-    setRefreshing(true);
-    var url = CFG.csvUrl + (CFG.csvUrl.indexOf("?") >= 0 ? "&" : "?") + "_cb=" + Date.now(); // 캐시 우회
+    var since = ($("date-since") && $("date-since").value) || "";
+    var until = ($("date-until") && $("date-until").value) || "";
+
+    setBusy(true);
+    showLoading("메타에서 받아와 집계하는 중… (최대 1분 정도 걸릴 수 있어요)");
+
+    var url = CFG.csvUrl + (CFG.csvUrl.indexOf("?") >= 0 ? "&" : "?") + "_cb=" + Date.now();
+    if (since) url += "&since=" + encodeURIComponent(since);
+    if (until) url += "&until=" + encodeURIComponent(until);
+
     fetch(url)
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(function (text) {
         var map = parseData_(text);
         if (!Object.keys(map).length) throw new Error("빈 데이터");
+        if (map._refresh_error) {
+          showError("기간 데이터를 받아오지 못했습니다: <code>" + map._refresh_error +
+            "</code><br>토큰 만료 또는 권한 문제일 수 있어요. 그래도 아래는 이전 집계 값입니다.");
+        } else {
+          var e = $("dash-error"); if (e) e.style.display = "none";
+        }
         render(map);
         var l = $("dash-loading"); if (l) l.style.display = "none";
         var s = $("sheet"); if (s) s.setAttribute("data-loading", "false");
-        var e = $("dash-error"); if (e) e.style.display = "none";
-        setRefreshing(false);
+        setBusy(false);
       })
       .catch(function (err) {
         showError("데이터를 불러오지 못했습니다: <code>" + (err && err.message ? err.message : err) +
-          "</code><br>시트가 ‘웹에 게시’ 되었는지, CSV 주소가 맞는지 확인해주세요.");
+          "</code><br>웹앱이 배포되었는지, 주소가 맞는지 확인해주세요.");
         console.error(err);
-        setRefreshing(false);
+        setBusy(false);
       });
+  }
+
+  /* 날짜 입력칸 기본값: 시작=defaultSince, 종료=오늘 */
+  function initDates() {
+    var s = $("date-since"), u = $("date-until");
+    if (s && !s.value) s.value = CFG.defaultSince || "2026-06-19";
+    if (u && !u.value) u.value = todayStr();
   }
 
   var refreshBtn = $("refresh-btn");
   if (refreshBtn) refreshBtn.addEventListener("click", load);
+  var applyBtn = $("apply-btn");
+  if (applyBtn) applyBtn.addEventListener("click", load);
 
-  load();
+  initDates();
+  load();  // 페이지 열 때 기본 기간(6/19~오늘)으로 1회 실시간 로드
 })();
 
 </script>
