@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>광고 성과 리포트</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#EAEEF3;
+    --surface:#FFFFFF;
+    --ink:#13171E;
+    --ink-2:#2A313C;
+    --muted:#5C6675;
+    --faint:#8B94A3;
+    --line:#DEE4EC;
+    --hero:#10141B;
+    --blue:#2F6BFF;
+    --blue-2:#7FA3FF;
+    --green:#0FA66E;
+    --green-soft:#E1F4EC;
+    --radius:18px;
+    --num:"Space Grotesk", "Pretendard", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Pretendard",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:32px 20px 56px;}
+  .sheet{max-width:1080px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 24px 60px -28px rgba(19,23,30,.28);}
+
+  .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:30px 38px 26px;flex-wrap:wrap;}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--blue);margin:0 0 8px;}
+  .topbar h1{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:0;}
+  .period{text-align:right;}
+  .period .range{font-family:var(--num);font-weight:600;font-size:18px;letter-spacing:.01em;color:var(--ink);}
+  .period .days{font-size:12.5px;color:var(--muted);margin-top:2px;font-weight:600;}
+
+  .hero{background:var(--hero);color:#fff;padding:40px 38px 42px;display:grid;grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);gap:40px;align-items:center;}
+  .hero-roas .label{font-size:12.5px;font-weight:700;letter-spacing:.16em;color:#7E8AA0;margin:0 0 6px;}
+  .hero-roas .big{font-family:var(--num);font-weight:700;font-size:clamp(58px,11vw,104px);line-height:.92;letter-spacing:-.03em;margin:0;}
+  .hero-roas .big span{color:var(--blue);}
+  .hero-roas .sub{margin:14px 0 0;color:#AAB4C4;font-size:14.5px;max-width:32ch;}
+  .hero-roas .sub b{color:#fff;font-weight:700;}
+
+  .flow{display:flex;flex-direction:column;gap:18px;}
+  .flow-row .flow-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;}
+  .flow-row .k{font-size:13px;color:#9AA4B4;font-weight:600;}
+  .flow-row .v{font-family:var(--num);font-weight:600;font-size:18px;letter-spacing:.01em;}
+  .flow-row .v small{font-family:"Pretendard";font-size:13px;color:#9AA4B4;font-weight:600;}
+  .bar{height:16px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden;display:flex;}
+  .bar .seg{display:block;height:100%;transform-origin:left;}
+  .bar.cost .seg.ad{width:6.88%;background:var(--blue);}
+  .bar.cost .seg.pt{width:6.48%;background:#3C4250;}
+  .bar.rev .seg{width:100%;background:var(--blue);border-radius:9px;}
+  .legend{display:flex;gap:16px;margin-top:2px;}
+  .legend span{font-size:11.5px;color:#9AA4B4;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+  .flow .mult{align-self:flex-end;font-family:var(--num);font-weight:600;font-size:13px;color:#9AA4B4;}
+  .flow .mult b{color:var(--blue);font-weight:700;}
+
+  .section{padding:34px 38px;}
+  .section + .section{border-top:1px solid var(--line);}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin:0 0 20px;}
+  .sec-head .no{font-family:var(--num);font-weight:600;font-size:13px;color:var(--faint);border:1px solid var(--line);border-radius:7px;padding:2px 8px;}
+  .sec-head h2{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0;}
+  .sec-head .hint{font-size:12.5px;color:var(--muted);margin-left:auto;font-weight:600;}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .cell{background:var(--surface);padding:18px 18px 20px;}
+  .cell.accent{background:#F6F9FF;}
+  .cell .ck{font-size:12.5px;color:var(--muted);font-weight:600;margin:0 0 10px;}
+  .cell .cv{font-family:var(--num);font-weight:600;font-size:27px;letter-spacing:-.01em;line-height:1;}
+  .cell.accent .cv{color:var(--blue);}
+  .cell .cv .won{font-family:"Pretendard",sans-serif;font-size:14px;font-weight:600;color:var(--ink-2);margin-left:2px;}
+  .cell.accent .cv .won{color:var(--blue);}
+  .cell .cs{font-size:11.5px;color:var(--faint);margin-top:8px;font-weight:600;}
+
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  .panel{border:1px solid var(--line);border-radius:var(--radius);padding:22px 22px 24px;background:var(--surface);}
+  .panel .ptitle{display:flex;align-items:center;gap:8px;margin:0 0 18px;}
+  .panel .ptitle h3{font-size:15px;font-weight:800;margin:0;}
+  .panel .ptitle .tag{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--green-soft);color:var(--green);}
+  .cmp-row{margin-bottom:14px;}
+  .cmp-row .cmp-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;}
+  .cmp-row .when{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .cmp-row .val{font-family:var(--num);font-weight:600;font-size:17px;}
+  .cmp-row .val .unit{font-family:"Pretendard";font-size:12px;color:var(--muted);font-weight:600;margin-left:2px;}
+  .track{height:13px;border-radius:7px;background:#EFF2F6;overflow:hidden;}
+  .track > span{display:block;height:100%;border-radius:7px;transform-origin:left;}
+  .track.before > span{background:#C2CBD8;}
+  .track.after > span{background:var(--green);}
+  .attrib{margin-top:16px;padding-top:15px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .attrib .at-k{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .attrib .at-v{font-family:var(--num);font-weight:600;font-size:15px;}
+  .attrib .at-v b{color:var(--green);}
+  .attrib-note{margin:10px 0 0;font-size:11px;color:var(--faint);line-height:1.6;font-weight:600;}
+  .attrib-note b{color:var(--muted);font-weight:700;}
+
+  .foot{padding:20px 38px 30px;font-size:11.5px;color:var(--faint);line-height:1.7;border-top:1px solid var(--line);}
+  .foot b{color:var(--muted);font-weight:700;}
+
+  .bar .seg,.track > span{animation:grow .9s cubic-bezier(.2,.7,.2,1) both;}
+  @keyframes grow{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+
+  @media (max-width:860px){.hero{grid-template-columns:1fr;gap:30px;}.grid{grid-template-columns:repeat(2,1fr);}.compare{grid-template-columns:1fr;}}
+  @media (max-width:520px){body{padding:14px 10px 30px;}.topbar,.hero,.section,.foot{padding-left:20px;padding-right:20px;}.grid{grid-template-columns:1fr 1fr;}.topbar h1{font-size:22px;}}
+  @media (prefers-reduced-motion:reduce){.bar .seg,.track > span{animation:none;}}
+  @media print{body{background:#fff;padding:0;}.sheet{box-shadow:none;border:none;border-radius:0;max-width:none;}.bar .seg,.track > span{animation:none;}}
+</style>
+<style>
+  .dash-state{max-width:1080px;margin:0 auto 14px;font-family:"Pretendard",system-ui,sans-serif;}
+  .dash-loading{padding:14px 18px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--muted);font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .dash-loading .dot{width:9px;height:9px;border-radius:50%;background:var(--blue);animation:pulse 1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.3;}50%{opacity:1;}}
+  .dash-error{padding:14px 18px;border:1px solid #F0C2C2;border-radius:14px;background:#FCEEEE;color:#9B2C2C;font-size:13px;font-weight:600;line-height:1.6;}
+  .dash-error code{background:#fff;padding:1px 5px;border-radius:5px;font-size:12px;}
+  .sheet[data-loading="true"]{opacity:.35;pointer-events:none;}
+  .updated{font-size:11px;color:var(--faint);font-weight:600;}
+</style>
+
+</head>
+<body>
+
+  <div class="dash-state">
+    <div id="dash-loading" class="dash-loading"><span class="dot"></span> 구글 시트에서 데이터를 불러오는 중…</div>
+    <div id="dash-error" class="dash-error" style="display:none"></div>
+  </div>
+
+  <main class="sheet" id="sheet" data-loading="true">
+
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">광고 성과 리포트</p>
+        <h1>캠페인 성과 요약</h1>
+      </div>
+      <div class="period">
+        <div class="range"><span id="period-range">—</span></div>
+        <div class="days"><span id="period-days">집행 기간</span></div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-roas">
+        <p class="label">ROAS · 총비용 기준 (광고비 + 포인트 지급)</p>
+        <p class="big"><span id="roas-total">0</span><span>%</span></p>
+        <p class="sub">광고비 기준 <b><span id="roas-ad">0</span>%</b></p>
+      </div>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="flow-top">
+            <span class="k">총비용 (광고비 + 포인트)</span>
+            <span class="v"><span id="total-cost">0</span><small>원</small></span>
+          </div>
+          <div class="bar cost"><span class="seg ad" id="bar-ad"></span><span class="seg pt" id="bar-pt"></span></div>
+          <div class="legend">
+            <span><i style="background:#2F6BFF"></i>광고비 <span id="legend-ad">0</span></span>
+            <span><i style="background:#3C4250"></i>포인트 <span id="legend-pt">0</span></span>
+          </div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-top">
+            <span class="k">거래액</span>
+            <span class="v"><span id="revenue">0</span><small>원</small></span>
+          </div>
+          <div class="bar rev"><span class="seg"></span></div>
+        </div>
+        <div class="mult">회수 배수 <b>×<span id="roas-mult">0</span></b></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sec-head">
+        <span class="no">01</span>
+        <h2>비용 구성 &amp; 신규 유치 효율(Meta 이벤트 픽셀데이터 기준)</h2>
+        <span class="hint">포인트: 신규 회원 인당 <span id="point-per-head">0</span>원 지급</span>
+      </div>
+      <div class="grid">
+        <div class="cell">
+          <p class="ck">광고비 지출</p>
+          <div class="cv"><span id="ad-spend">0</span><span class="won">원</span></div>
+          <p class="cs">미디어 집행 비용</p>
+        </div>
+        <div class="cell">
+          <p class="ck">신규 포인트 지급</p>
+          <div class="cv"><span id="points-paid">0</span><span class="won">원</span></div>
+          <p class="cs">신규 회원 인당 <span id="pph-2">0</span>원 (약 <span id="points-head">0</span>명)</p>
+        </div>
+        <div class="cell accent">
+          <p class="ck">총비용</p>
+          <div class="cv"><span id="total-cost-2">0</span><span class="won">원</span></div>
+          <p class="cs">광고 + 포인트</p>
+        </div>
+        <div class="cell accent">
+          <p class="ck">인당 신규 유치비용</p>
+          <div class="cv"><span id="cpa-total">0</span><span class="won">원</span></div>
+          <p class="cs">총비용 ÷ 신규 전환</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sec-head">
+        <span class="no">02</span>
+        <h2>핵심 지표(Meta 간접 유입 포함)</h2>
+        <span class="hint">집행 기간 누계 기준</span>
+      </div>
+      <div class="grid">
+        <div class="cell">
+          <p class="ck">노출</p>
+          <div class="cv"><span id="impressions">0</span></div>
+          <p class="cs">도달 광고 노출 횟수</p>
+        </div>
+        <div class="cell">
+          <p class="ck">페이지 조회</p>
+          <div class="cv"><span id="page-views">0</span></div>
+          <p class="cs">조회율 <span id="view-rate">0%</span></p>
+        </div>
+        <div class="cell">
+          <p class="ck">신규 인증 전환</p>
+          <div class="cv"><span id="new-conv">0</span></div>
+          <p class="cs">전환율 <span id="conv-rate">0%</span> · 메타 픽셀 기준</p>
+        </div>
+        <div class="cell">
+          <p class="ck">신규 전환당 비용</p>
+          <div class="cv"><span id="cpc-ad">0</span><span class="won">원</span></div>
+          <p class="cs">광고비 기준 · 총비용 <span id="cpc-total">0</span>원</p>
+        </div>
+        <div class="cell">
+          <p class="ck">기인증자</p>
+          <div class="cv"><span id="attributed">0</span></div>
+          <p class="cs">신규+기인증자 <span id="results-total">0</span></p>
+        </div>
+        <div class="cell">
+          <p class="ck">총 구매(신규+기존)</p>
+          <div class="cv"><span id="total-purchases">0</span></div>
+          <p class="cs">구매 전환율 <span id="purchase-rate">0%</span></p>
+        </div>
+        <div class="cell">
+          <p class="ck">구매당 비용</p>
+          <div class="cv"><span id="cpp-ad">0</span><span class="won">원</span></div>
+          <p class="cs">광고비 기준 · 총비용 <span id="cpp-total">0</span>원</p>
+        </div>
+        <div class="cell">
+          <p class="ck">게시물 공유</p>
+          <div class="cv"><span id="shares">0</span></div>
+          <p class="cs">콘텐츠 공유 횟수</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="ba-section" style="display:none">
+      <div class="sec-head">
+        <span class="no">03</span>
+        <h2>집행 전후 일평균 변화</h2>
+        <span class="hint">집행 전 = 직전 1개월 평균 · 가입·구매 집계는 별도 소스</span>
+      </div>
+      <div class="compare">
+
+        <div class="panel">
+          <div class="ptitle">
+            <h3>신규 가입자</h3>
+            <span class="tag" id="su-lift">+0%</span>
+          </div>
+          <div class="cmp-row">
+            <div class="cmp-top">
+              <span class="when">집행 전</span>
+              <span class="val"><span id="su-before">0</span><span class="unit">명/일</span></span>
+            </div>
+            <div class="track before"><span id="su-bar-before" style="width:0%"></span></div>
+          </div>
+          <div class="cmp-row">
+            <div class="cmp-top">
+              <span class="when">집행 후</span>
+              <span class="val"><span id="su-after">0</span><span class="unit">명/일</span></span>
+            </div>
+            <div class="track after"><span id="su-bar-after" style="width:100%"></span></div>
+          </div>
+          <div class="attrib">
+            <span class="at-k">광고 인입 신규 가입자</span>
+            <span class="at-v">일평균 <b><span id="su-attrib-daily">0</span>명</b> · 총 <span id="su-attrib-total">0</span>명</span>
+          </div>
+          <p class="attrib-note">공유하기 등 간접성과를 포함한 실지급 인원 기준입니다.</p>
+        </div>
+
+        <div class="panel">
+          <div class="ptitle">
+            <h3>신규 구매자</h3>
+            <span class="tag" id="bu-lift">+0%</span>
+          </div>
+          <div class="cmp-row">
+            <div class="cmp-top">
+              <span class="when">집행 전</span>
+              <span class="val"><span id="bu-before">0</span><span class="unit">명/일</span></span>
+            </div>
+            <div class="track before"><span id="bu-bar-before" style="width:0%"></span></div>
+          </div>
+          <div class="cmp-row">
+            <div class="cmp-top">
+              <span class="when">집행 후</span>
+              <span class="val"><span id="bu-after">0</span><span class="unit">명/일</span></span>
+            </div>
+            <div class="track after"><span id="bu-bar-after" style="width:100%"></span></div>
+          </div>
+          <div class="attrib">
+            <span class="at-k">광고 인입 신규 구매자</span>
+            <span class="at-v">일평균 <b><span id="bu-attrib-daily">0</span>명</b> · 총 <span id="bu-attrib-total">0</span>명</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <p class="foot">
+      <span id="foot-line1"></span><br>
+      <span id="foot-line2"></span><br>
+      <span class="updated" id="foot-updated"></span>
+    </p>
+
+  </main>
+
+<script src="assets/config.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>
