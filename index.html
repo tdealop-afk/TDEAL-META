@@ -33,9 +33,18 @@
   .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:30px 38px 26px;flex-wrap:wrap;}
   .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--blue);margin:0 0 8px;}
   .topbar h1{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:0;}
+  .topbar-right{display:flex;align-items:center;gap:14px;}
   .period{text-align:right;}
   .period .range{font-family:var(--num);font-weight:600;font-size:18px;letter-spacing:.01em;color:var(--ink);}
   .period .days{font-size:12.5px;color:var(--muted);margin-top:2px;font-weight:600;}
+
+  .refresh-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;transition:background .15s ease,color .15s ease,border-color .15s ease;}
+  .refresh-btn:hover{background:#F6F9FF;color:var(--blue);border-color:var(--blue-2);}
+  .refresh-btn:active{transform:scale(.94);}
+  .refresh-btn:disabled{cursor:default;opacity:.55;}
+  .refresh-btn svg{width:16px;height:16px;}
+  .refresh-btn.spinning svg{animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
 
   .hero{background:var(--hero);color:#fff;padding:40px 38px 42px;display:grid;grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);gap:40px;align-items:center;}
   .hero-roas .label{font-size:12.5px;font-weight:700;letter-spacing:.16em;color:#7E8AA0;margin:0 0 6px;}
@@ -135,9 +144,14 @@
         <p class="eyebrow">광고 성과 리포트</p>
         <h1>캠페인 성과 요약</h1>
       </div>
-      <div class="period">
-        <div class="range"><span id="period-range">—</span></div>
-        <div class="days"><span id="period-days">집행 기간</span></div>
+      <div class="topbar-right">
+        <div class="period">
+          <div class="range"><span id="period-range">—</span></div>
+          <div class="days"><span id="period-days">집행 기간</span></div>
+        </div>
+        <button type="button" id="refresh-btn" class="refresh-btn" title="새로고침" aria-label="새로고침">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        </button>
       </div>
     </header>
 
@@ -328,10 +342,9 @@
 //  웹앱을 배포한 뒤 나오는 .../exec 주소로 아래 값을 교체하면 실시간이 됩니다.
 // ---------------------------------------------------------------------------
 window.DASHBOARD_CONFIG = {
-  csvUrl: "https://script.google.com/macros/s/AKfycbxcDf7xe_ABmSLfTmEmwtqKmMWz5dMcGXG9BzmgzmXDhrv8elInz3g2JVLj4QzyKvhucw/exec",
+  csvUrl: "https://script.google.com/macros/s/AKfycbxcDf7xe_ABmSLfTmEmwtqKmMWz5dMcGXG9BzmgzmXDhrv8elInz3g2JVLj4QzyKvhucw/exec"
 
-  // 자동 새로고침 간격(밀리초). 실시간 화면이라 1분마다 갱신.
-  refreshMs: 60000
+  // 자동 새로고침은 끔. 상단 우측 새로고침 버튼을 눌러야 갱신됩니다.
 };
 
 </script>
@@ -550,11 +563,19 @@ window.DASHBOARD_CONFIG = {
     var l = $("dash-loading"); if (l) l.style.display = "none";
   }
 
+  function setRefreshing(on) {
+    var btn = $("refresh-btn");
+    if (!btn) return;
+    btn.disabled = on;
+    btn.classList.toggle("spinning", on);
+  }
+
   function load() {
     if (!CFG.csvUrl || CFG.csvUrl.indexOf("PASTE_") === 0) {
       showError("⚠️ <code>assets/config.js</code> 의 <code>csvUrl</code> 에 구글 시트 게시 CSV 주소를 넣어주세요.");
       return;
     }
+    setRefreshing(true);
     var url = CFG.csvUrl + (CFG.csvUrl.indexOf("?") >= 0 ? "&" : "?") + "_cb=" + Date.now(); // 캐시 우회
     fetch(url)
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
@@ -564,16 +585,21 @@ window.DASHBOARD_CONFIG = {
         render(map);
         var l = $("dash-loading"); if (l) l.style.display = "none";
         var s = $("sheet"); if (s) s.setAttribute("data-loading", "false");
+        var e = $("dash-error"); if (e) e.style.display = "none";
+        setRefreshing(false);
       })
       .catch(function (err) {
         showError("데이터를 불러오지 못했습니다: <code>" + (err && err.message ? err.message : err) +
           "</code><br>시트가 ‘웹에 게시’ 되었는지, CSV 주소가 맞는지 확인해주세요.");
         console.error(err);
+        setRefreshing(false);
       });
   }
 
+  var refreshBtn = $("refresh-btn");
+  if (refreshBtn) refreshBtn.addEventListener("click", load);
+
   load();
-  if (CFG.refreshMs && CFG.refreshMs > 0) setInterval(load, CFG.refreshMs);
 })();
 
 </script>
